@@ -1,66 +1,55 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
+from datetime import datetime
 
-# 仮データの生成
-def generate_progress_data():
-    # 10日間の仮データ
-    dates = pd.date_range(start="2023-01-01", periods=10)
-    progress = [55, 60, 65, 70, 75, 80, 82, 85, 88, 90]  # 進捗率 (%)
-    scores = [70, 72, 75, 78, 80, 85, 87, 88, 90, 92]    # 成績 (%)
-    return pd.DataFrame({"Date": dates, "Progress": progress, "Score": scores})
+# タイトルと説明
+st.title('学習進捗管理アプリ')
+st.write('学習の進捗状況や成績をリアルタイムで管理・視覚化するアプリです。')
 
-# データの読み込み
-data = generate_progress_data()
+# データを保存するための初期化（デモ用）
+if 'data' not in st.session_state:
+    st.session_state['data'] = pd.DataFrame(columns=['Date', 'Study Hours', 'Score'])
 
-# アプリのタイトル
-st.title("学習進捗管理アプリ")
-st.header("リアルタイムで学習進捗と成績を把握")
-
-# 進捗状況のグラフ
-st.subheader("学習進捗の視覚化")
-fig, ax = plt.subplots()
-ax.plot(data["Date"], data["Progress"], marker="o", label="進捗率 (%)")
-ax.plot(data["Date"], data["Score"], marker="x", label="成績 (%)", linestyle="--")
-ax.set_xlabel("日付")
-ax.set_ylabel("進捗/成績 (%)")
-ax.set_title("学習進捗と成績の推移")
-ax.legend()
-
-st.pyplot(fig)
-
-# データの表示
-st.subheader("データの確認")
-st.write(data)
-
-# 進捗と成績のリアルタイム入力
-st.subheader("進捗状況を更新")
-new_progress = st.slider("今日の進捗率 (%)", 0, 100, 50)
-new_score = st.slider("今日の成績 (%)", 0, 100, 50)
-
-if st.button("更新"):
-    # 新しいデータを追加
-    new_data = pd.DataFrame({
-        "Date": [pd.to_datetime("today")],
-        "Progress": [new_progress],
-        "Score": [new_score]
-    })
-    data = pd.concat([data, new_data], ignore_index=True)
+# 学習データ入力フォーム
+with st.form(key='study_form'):
+    date = st.date_input('学習日', value=datetime.now())
+    study_hours = st.number_input('学習時間（時間）', min_value=0.0, step=0.5)
+    score = st.number_input('テストのスコア', min_value=0, max_value=100, step=1)
     
-    st.success(f"進捗率: {new_progress}%, 成績: {new_score}% を追加しました")
+    submit_button = st.form_submit_button(label='データを保存')
 
-# 更新後のグラフ再描画
-st.subheader("更新後の学習進捗の視覚化")
-fig2, ax2 = plt.subplots()
-ax2.plot(data["Date"], data["Progress"], marker="o", label="進捗率 (%)")
-ax2.plot(data["Date"], data["Score"], marker="x", label="成績 (%)", linestyle="--")
-ax2.set_xlabel("日付")
-ax2.set_ylabel("進捗/成績 (%)")
-ax2.set_title("更新後の学習進捗と成績の推移")
-ax2.legend()
+# データの保存処理
+if submit_button:
+    new_data = pd.DataFrame({'Date': [date], 'Study Hours': [study_hours], 'Score': [score]})
+    st.session_state['data'] = pd.concat([st.session_state['data'], new_data], ignore_index=True)
+    st.success('データが保存されました！')
 
-st.pyplot(fig2)
+# 保存されたデータの表示
+st.write('### 現在の学習データ')
+st.dataframe(st.session_state['data'])
 
-# 更新後のデータ表示
-st.subheader("更新後のデータ")
-st.write(data)
+# グラフ描画のオプション
+st.write('### グラフ表示')
+plot_type = st.selectbox('表示するグラフを選択してください', ['学習時間', 'スコア'])
+
+# グラフ描画
+if not st.session_state['data'].empty:
+    fig, ax = plt.subplots()
+
+    if plot_type == '学習時間':
+        ax.plot(st.session_state['data']['Date'], st.session_state['data']['Study Hours'], marker='o')
+        ax.set_title('日別学習時間の推移')
+        ax.set_xlabel('日付')
+        ax.set_ylabel('学習時間（時間）')
+
+    elif plot_type == 'スコア':
+        ax.plot(st.session_state['data']['Date'], st.session_state['data']['Score'], marker='o', color='orange')
+        ax.set_title('日別スコアの推移')
+        ax.set_xlabel('日付')
+        ax.set_ylabel('スコア')
+
+    st.pyplot(fig)
+else:
+    st.write('データがまだ入力されていません。')

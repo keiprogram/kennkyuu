@@ -1,57 +1,66 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import random
-import time
-from sklearn.linear_model import LinearRegression
 
-# データ生成（仮データ）
-def generate_mock_data():
+# 仮データの生成
+def generate_progress_data():
+    # 10日間の仮データ
     dates = pd.date_range(start="2023-01-01", periods=10)
-    progress_data = np.random.randint(50, 100, size=(10,))
-    submission_rates = np.random.randint(80, 100, size=(10,))
-    study_hours = np.random.randint(1, 4, size=(10,))
-    return pd.DataFrame({"Date": dates, "Progress": progress_data, "Submission Rate": submission_rates, "Study Hours": study_hours})
+    progress = [55, 60, 65, 70, 75, 80, 82, 85, 88, 90]  # 進捗率 (%)
+    scores = [70, 72, 75, 78, 80, 85, 87, 88, 90, 92]    # 成績 (%)
+    return pd.DataFrame({"Date": dates, "Progress": progress, "Score": scores})
 
-data = generate_mock_data()
+# データの読み込み
+data = generate_progress_data()
 
-# ヘッダー
-st.title("学習管理アプリ")
-st.header("進捗状況と成績の管理")
+# アプリのタイトル
+st.title("学習進捗管理アプリ")
+st.header("リアルタイムで学習進捗と成績を把握")
 
-# グラフ描画
-st.subheader("学習進捗のグラフ")
+# 進捗状況のグラフ
+st.subheader("学習進捗の視覚化")
 fig, ax = plt.subplots()
-ax.plot(data["Date"], data["Progress"], label="進捗状況 (%)")
+ax.plot(data["Date"], data["Progress"], marker="o", label="進捗率 (%)")
+ax.plot(data["Date"], data["Score"], marker="x", label="成績 (%)", linestyle="--")
 ax.set_xlabel("日付")
-ax.set_ylabel("進捗 (%)")
+ax.set_ylabel("進捗/成績 (%)")
+ax.set_title("学習進捗と成績の推移")
 ax.legend()
+
 st.pyplot(fig)
 
-# 課題提出率の表示
-st.subheader("課題提出率")
-st.bar_chart(data.set_index("Date")["Submission Rate"])
+# データの表示
+st.subheader("データの確認")
+st.write(data)
 
-# 学習時間記録
-st.subheader("学習時間の記録")
-st.line_chart(data.set_index("Date")["Study Hours"])
+# 進捗と成績のリアルタイム入力
+st.subheader("進捗状況を更新")
+new_progress = st.slider("今日の進捗率 (%)", 0, 100, 50)
+new_score = st.slider("今日の成績 (%)", 0, 100, 50)
 
-# ランダム通知（簡易版）
-st.subheader("ランダム通知")
-if st.button("ランダムに問題を出す"):
-    random_notification = random.choice(["問題を解いてみましょう！", "次の課題に挑戦！", "小テストの時間です！"])
-    st.write(random_notification)
+if st.button("更新"):
+    # 新しいデータを追加
+    new_data = pd.DataFrame({
+        "Date": [pd.to_datetime("today")],
+        "Progress": [new_progress],
+        "Score": [new_score]
+    })
+    data = pd.concat([data, new_data], ignore_index=True)
+    
+    st.success(f"進捗率: {new_progress}%, 成績: {new_score}% を追加しました")
 
-# 成績のAI分析（簡易版）
-st.subheader("AIによる成績分析")
-X = np.array(data.index).reshape(-1, 1)  # 仮データ
-y = data["Progress"]
+# 更新後のグラフ再描画
+st.subheader("更新後の学習進捗の視覚化")
+fig2, ax2 = plt.subplots()
+ax2.plot(data["Date"], data["Progress"], marker="o", label="進捗率 (%)")
+ax2.plot(data["Date"], data["Score"], marker="x", label="成績 (%)", linestyle="--")
+ax2.set_xlabel("日付")
+ax2.set_ylabel("進捗/成績 (%)")
+ax2.set_title("更新後の学習進捗と成績の推移")
+ax2.legend()
 
-# 線形回帰モデルの訓練
-model = LinearRegression()
-model.fit(X, y)
+st.pyplot(fig2)
 
-predicted_progress = model.predict(np.array([[len(data)]]))  # 次の日の進捗予測
-
-st.write(f"AIの予測によると、明日の進捗は {predicted_progress[0]:.2f}% です。")
+# 更新後のデータ表示
+st.subheader("更新後のデータ")
+st.write(data)
